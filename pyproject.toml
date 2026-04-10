@@ -1,6 +1,6 @@
 [build-system]
 requires      = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.backends.legacy:build"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "cipher-gateway"
@@ -46,4 +46,4 @@ include = ["cipher_gateway*"]
 
 [tool.setuptools.package-data]
 # py.typed marks the package as PEP 561 typed — IDEs will use inline type hints
-cipher-gateway = ["py.typed"]
+cipher_gateway = ["py.typed"]
