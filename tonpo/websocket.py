@@ -125,7 +125,11 @@ class WebSocketClient:
             async for message in self._connection:
                 await self._dispatch(message)
         except ConnectionClosed as exc:
-            logger.warning("WebSocket closed (code: %s) — scheduling reconnect", exc.rcvd_then)
+            logger.warning(
+                "WebSocket closed (code: %s, %s) — scheduling reconnect",
+                exc.rcvd_then.code if exc.rcvd_then else None,
+                exc.sent_then.code if exc.sent_then else None
+            )
             self._connected = False
             if not self._reconnect_task or self._reconnect_task.done():
                 self._reconnect_task = asyncio.create_task(
