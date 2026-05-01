@@ -327,11 +327,11 @@ class TonpoClient:
         
         """
         # VALIDATION
-        if volume is not None and volume <= 0:
+        if volume is not None and volume < 0:
             raise TonpoError(f"Volume must be positive if provided, got {volume}")
             
         payload: dict = {"ticket": ticket}
-        if volume is not None:
+        if volume is not None and volume > 0:
             payload["volume"] = volume
         data = await self._http.post("/api/orders/close", json=payload)
         return OrderResult.from_dict(data)
