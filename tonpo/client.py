@@ -21,25 +21,27 @@ import logging
 import time
 from typing import List, Optional
 
-from .models import (
-    TonpoConfig,
-    UserCredentials,
-    AccountCredentials,
-    AccountInfo,
-    Position,
-    OrderResult,
-    SymbolPrice,
-    Quote,
-    Tick,
-    Candle,
-)
-from .transport import HttpTransport
 from .exceptions import (
     AccountLoginFailedError,
     AccountNotFoundError,
     AccountTimeoutError,
     NotStartedError,
+    TonpoError,
 )
+from .models import (
+    AccountCredentials,
+    AccountInfo,
+    Candle,
+    OrderResult,
+    Position,
+    Quote,
+    SymbolPrice,
+    Tick,
+    TonpoConfig,
+    UserCredentials,
+)
+from .transport import HttpTransport
+from .websocket import WebSocketClient
 
 logger = logging.getLogger(__name__)
 

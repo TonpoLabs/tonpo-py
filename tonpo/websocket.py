@@ -137,7 +137,7 @@ class WebSocketClient:
                 msg = str(exc)
                 logger.warning("WebSocket closed (%s) — scheduling reconnect", msg)
             except Exception:
-                logger.warning("WebSocket closed — scheduling reconnect"
+                logger.warning("WebSocket closed — scheduling reconnect")
             
             self._connected = False
             if not self._reconnect_task or self._reconnect_task.done():
