@@ -239,9 +239,7 @@ class TonpoClient:
             )
             await asyncio.sleep(poll_interval)
 
-        raise AccountTimeoutError(
-            f"Account {account_id} did not become active within {timeout}s"
-        )
+        raise AccountTimeoutError(f"Account {account_id} did not become active within {timeout}s")
 
     async def get_account_status(self, account_id: str) -> Dict[str, Any]:
         """
@@ -406,7 +404,15 @@ class TonpoClient:
     ) -> OrderResult:
         """Place a limit buy order."""
         return await self._place_order(
-            symbol, "buy", "limit", volume, price=price, sl=sl, tp=tp, comment=comment, magic=magic
+            symbol,
+            "buy",
+            "limit",
+            volume,
+            price=price,
+            sl=sl,
+            tp=tp,
+            comment=comment,
+            magic=magic,
         )
 
     async def place_limit_sell(
@@ -421,7 +427,15 @@ class TonpoClient:
     ) -> OrderResult:
         """Place a limit sell order."""
         return await self._place_order(
-            symbol, "sell", "limit", volume, price=price, sl=sl, tp=tp, comment=comment, magic=magic
+            symbol,
+            "sell",
+            "limit",
+            volume,
+            price=price,
+            sl=sl,
+            tp=tp,
+            comment=comment,
+            magic=magic,
         )
 
     async def place_stop_buy(
@@ -436,7 +450,15 @@ class TonpoClient:
     ) -> OrderResult:
         """Place a stop buy order."""
         return await self._place_order(
-            symbol, "buy", "stop", volume, price=price, sl=sl, tp=tp, comment=comment, magic=magic
+            symbol,
+            "buy",
+            "stop",
+            volume,
+            price=price,
+            sl=sl,
+            tp=tp,
+            comment=comment,
+            magic=magic,
         )
 
     async def place_stop_sell(
@@ -451,7 +473,15 @@ class TonpoClient:
     ) -> OrderResult:
         """Place a stop sell order."""
         return await self._place_order(
-            symbol, "sell", "stop", volume, price=price, sl=sl, tp=tp, comment=comment, magic=magic
+            symbol,
+            "sell",
+            "stop",
+            volume,
+            price=price,
+            sl=sl,
+            tp=tp,
+            comment=comment,
+            magic=magic,
         )
 
     async def _place_order(
