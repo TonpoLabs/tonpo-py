@@ -74,7 +74,7 @@ class WebSocketClient:
 
     async def connect(self) -> None:
         """Connect WebSocket. No-op if already connected."""
-        if self._connection and not self._connection.closed:
+        if self._connected and self._connection is not None:
             return
         self._reconnect_attempts = 0
         await self._connect_with_retry()
@@ -93,9 +93,13 @@ class WebSocketClient:
                 except Exception as exc:
                     logger.warning("Error during task cleanup: %s", exc)
 
-        if self._connection and not self._connection.closed:
-            await self._connection.close()
-            self._connection = None
+        if self._connection is not None:
+            try:
+                await self._connection.close()
+            except Exception:
+                pass  # Connection already closed or other error
+            finally:
+                self._connection = None
 
     async def _connect_with_retry(self) -> None:
         headers: Dict[str, str] = {}
@@ -152,7 +156,7 @@ class WebSocketClient:
 
     # Message dispatch
 
-    async def _dispatch(self, raw: str) -> None:
+    async def _dispatch(self, raw: str | bytes) -> None:
         try:
             data = json.loads(raw)
         except json.JSONDecodeError:
