@@ -11,6 +11,7 @@ import uuid
 from typing import Any, Callable, Dict, List, Optional
 
 import websockets
+from websockets.client import ClientConnection
 from websockets.exceptions import ConnectionClosed
 
 from .exceptions import SubscriptionError, TonpoConnectionError
@@ -38,7 +39,7 @@ class WebSocketClient:
     def __init__(self, config: TonpoConfig, api_key: Optional[str] = None) -> None:
         self._config = config
         self._api_key = api_key
-        self._connection: Optional[websockets.WebSocketClientProtocol] = None
+        self._connection: Optional[ClientConnection] = None
         self._listener_task: Optional[asyncio.Task[None]] = None
         self._reconnect_task: Optional[asyncio.Task[None]] = None
         self._reconnect_attempts = 0
@@ -97,7 +98,7 @@ class WebSocketClient:
             self._connection = None
 
     async def _connect_with_retry(self) -> None:
-        headers = {}
+        headers: Dict[str, str] = {}
         if self._api_key:
             headers[self._config.api_key_header] = self._api_key
 
@@ -131,6 +132,8 @@ class WebSocketClient:
 
     async def _listen(self) -> None:
         try:
+            if self._connection is None:
+                raise TonpoConnectionError("WebSocket connection is None")
             async for message in self._connection:
                 await self._dispatch(message)
         except ConnectionClosed as exc:
@@ -157,7 +160,7 @@ class WebSocketClient:
             return
 
         msg_type = data.get("type")
-        handlers = {
+        handlers: Dict[str, Callable[[Dict[str, Any]], Any]] = {
             "tick": self._on_tick,
             "quote": self._on_quote,
             "candle": self._on_candle,
@@ -179,7 +182,7 @@ class WebSocketClient:
         else:
             logger.debug("Unknown WS message type: %s", msg_type)
 
-    async def _on_tick(self, data: dict) -> None:
+    async def _on_tick(self, data: Dict[str, Any]) -> None:
         tick = Tick(
             symbol=data["symbol"],
             bid=float(data["bid"]),
@@ -192,12 +195,12 @@ class WebSocketClient:
             "bid": tick.bid,
             "ask": tick.ask,
             "last": tick.last,
-            "time": tick.time,
+            "time": float(tick.time),
         }
         for cb in self._tick_callbacks.get(tick.symbol, []):
             await self._call(cb, tick)
 
-    async def _on_quote(self, data: dict) -> None:
+    async def _on_quote(self, data: Dict[str, Any]) -> None:
         quote = Quote(
             symbol=data["symbol"],
             bid=float(data["bid"]),
@@ -207,7 +210,7 @@ class WebSocketClient:
         for cb in self._quote_callbacks.get(quote.symbol, []):
             await self._call(cb, quote)
 
-    async def _on_candle(self, data: dict) -> None:
+    async def _on_candle(self, data: Dict[str, Any]) -> None:
         candle = Candle(
             symbol=data["symbol"],
             timeframe=data["timeframe"],
@@ -223,32 +226,32 @@ class WebSocketClient:
         for cb in self._candle_callbacks.get(key, []):
             await self._call(cb, candle)
 
-    async def _on_position(self, data: dict) -> None:
+    async def _on_position(self, data: Dict[str, Any]) -> None:
         position = Position.from_dict(data)
         for cb in self._position_callbacks:
             await self._call(cb, position)
 
-    async def _on_order_result(self, data: dict) -> None:
+    async def _on_order_result(self, data: Dict[str, Any]) -> None:
         result = OrderResult.from_dict(data)
         for cb in self._order_callbacks:
             await self._call(cb, result)
 
-    async def _on_account(self, data: dict) -> None:
+    async def _on_account(self, data: Dict[str, Any]) -> None:
         account = AccountInfo.from_dict(data)
         for cb in self._account_callbacks:
             await self._call(cb, account)
 
-    async def _on_pong(self, data: dict) -> None:
+    async def _on_pong(self, data: Dict[str, Any]) -> None:
         await self._on_response(data)
 
-    async def _on_response(self, data: dict) -> None:
+    async def _on_response(self, data: Dict[str, Any]) -> None:
         request_id = data.get("request_id")
         if request_id and request_id in self._pending:
             future = self._pending.pop(request_id)
             if not future.done():
                 future.set_result(data)
 
-    async def _on_error(self, data: dict) -> None:
+    async def _on_error(self, data: Dict[str, Any]) -> None:
         code = data.get("code")
         msg = data.get("message", "Tonpo error")
         logger.error("Tonpo WS error %s: %s", code, msg)
@@ -270,14 +273,17 @@ class WebSocketClient:
 
     # ==================== Commands ====================
 
-    async def _send(self, payload: dict, timeout: float = 5.0) -> dict:
+    async def _send(self, payload: Dict[str, Any], timeout: float = 5.0) -> Dict[str, Any]:
         if not self._connected or not self._connection:
             await self.connect()
 
         request_id = str(uuid.uuid4())
         payload["request_id"] = request_id
-        future = asyncio.get_running_loop().create_future()
+        future: asyncio.Future[Any] = asyncio.get_running_loop().create_future()
         self._pending[request_id] = future
+
+        if self._connection is None:
+            raise TonpoConnectionError("WebSocket connection is None")
 
         await self._connection.send(json.dumps(payload))
 
@@ -293,7 +299,7 @@ class WebSocketClient:
         timeframe: Optional[str] = None,
     ) -> bool:
         """Subscribe to real-time market data for the given symbols."""
-        payload: dict = {"type": "subscribe", "symbols": symbols}
+        payload: Dict[str, Any] = {"type": "subscribe", "symbols": symbols}
         if timeframe:
             payload["timeframe"] = timeframe
         try:

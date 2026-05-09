@@ -27,24 +27,24 @@ class HttpTransport:
     Handles auth-header injection and HTTP-status → exception mapping.
     """
 
-    def __init__(self, config: TonpoConfig):
+    def __init__(self, config: TonpoConfig) -> None:
         self._config = config
         self._client: Optional[httpx.AsyncClient] = None
         self._api_key: Optional[str] = None
 
-    async def start(self):
+    async def start(self) -> None:
         self._client = httpx.AsyncClient(
             base_url=self._config.base_url,
             timeout=self._config.request_timeout,
             limits=httpx.Limits(max_keepalive_connections=10),
         )
 
-    async def stop(self):
+    async def stop(self) -> None:
         if self._client:
             await self._client.aclose()
             self._client = None
 
-    def set_api_key(self, api_key: str):
+    def set_api_key(self, api_key: str) -> None:
         self._api_key = api_key
 
     def _headers(self) -> Dict[str, str]:
@@ -52,7 +52,7 @@ class HttpTransport:
             return {self._config.api_key_header: self._api_key}
         return {}
 
-    def _ensure_started(self):
+    def _ensure_started(self) -> None:
         if not self._client:
             raise NotStartedError("Client not started — call start() or use 'async with'")
 
@@ -64,7 +64,7 @@ class HttpTransport:
         except httpx.RequestError as e:
             raise TonpoConnectionError(f"GET {path} failed: {e}") from e
 
-    async def post(self, path: str, json: Optional[Dict] = None) -> Any:
+    async def post(self, path: str, json: Optional[Dict[str, Any]] = None) -> Any:
         self._ensure_started()
         try:
             r = await self._client.post(path, json=json or {}, headers=self._headers())
@@ -80,7 +80,7 @@ class HttpTransport:
         except httpx.RequestError as e:
             raise TonpoConnectionError(f"DELETE {path} failed: {e}") from e
 
-    async def patch(self, path: str, json: Optional[Dict] = None) -> Any:
+    async def patch(self, path: str, json: Optional[Dict[str, Any]] = None) -> Any:
         """Send a PATCH request."""
         self._ensure_started()
         try:

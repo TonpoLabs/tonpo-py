@@ -62,7 +62,7 @@ class TonpoClient:
             await client.stop()
     """
 
-    def __init__(self, config: TonpoConfig, api_key: Optional[str] = None):
+    def __init__(self, config: TonpoConfig, api_key: Optional[str] = None) -> None:
         self._config = config
         self._http = HttpTransport(config)
         self._ws = WebSocketClient(config, api_key=api_key)
@@ -97,7 +97,7 @@ class TonpoClient:
         self._started = True
         logger.debug("TonpoClient started — %s", self._config.base_url)
 
-    async def stop(self):
+    async def stop(self) -> None:
         """Close all connections cleanly."""
         await self._ws.disconnect()
         await self._http.stop()
@@ -113,11 +113,11 @@ class TonpoClient:
                 "or call await client.start() before using any methods."
             )
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> "TonpoClient":
         await self.start()
         return self
 
-    async def __aexit__(self, *_):
+    async def __aexit__(self, *_: Any) -> None:
         await self.stop()
 
     # Health
@@ -174,7 +174,7 @@ class TonpoClient:
             Store ``account_id`` — it identifies this account in all future calls.
         """
         # Gateway CreateAccountRequest uses camelCase (Rust #[serde(rename_all = "camelCase")])
-        payload: dict = {
+        payload: Dict[str, Any] = {
             "mt5Login": mt5_login,
             "mt5Password": mt5_password,
             "mt5Server": mt5_server,
@@ -240,11 +240,10 @@ class TonpoClient:
             await asyncio.sleep(poll_interval)
 
         raise AccountTimeoutError(
-            f"Account {account_id} did not become active within {timeout}s — "
-            "check MT5 credentials, broker server name, and node agent logs"
+            f"Account {account_id} did not become active within {timeout}s"
         )
 
-    async def get_account_status(self, account_id: str) -> dict:
+    async def get_account_status(self, account_id: str) -> Dict[str, Any]:
         """
         Get the current status of a provisioned account.
 
@@ -252,7 +251,8 @@ class TonpoClient:
           - ``status``     — ``"active"``, ``"connecting"``, ``"login_failed"``, ...
           - ``last_error`` — error string or ``None``
         """
-        return await self._http.get(f"/api/accounts/{account_id}")
+        self._ensure_started()
+        return await self._http.get(f"/api/accounts/{account_id}/status")
 
     async def get_accounts(self) -> List[dict]:
         """List all accounts belonging to the authenticated user."""
@@ -281,9 +281,10 @@ class TonpoClient:
     # ==================== Account info ====================
 
     async def get_account_info(self) -> AccountInfo:
-        """Get MT5 account balance, equity, margin, and other live info."""
-        data = await self._http.get("/api/account")
-        return AccountInfo.from_dict(data.get("account", data))
+        """Get live account info (balance, equity, margin, profit, etc.)."""
+        self._ensure_started()
+        data = await self._http.get("/api/account/info")
+        return AccountInfo.from_dict(data)
 
     async def list_symbols(self) -> List[str]:
         """
@@ -297,10 +298,17 @@ class TonpoClient:
 
     # ==================== Positions ====================
 
-    async def get_positions(self) -> List[Position]:
-        """Get all currently open positions."""
+    async def get_positions(self) -> List[Dict[str, Any]]:
+        """Get all open positions."""
+        self._ensure_started()
         data = await self._http.get("/api/positions")
-        return [Position.from_dict(p) for p in data.get("positions", [])]
+        return data
+
+    async def get_position(self, ticket: int) -> Dict[str, Any]:
+        """Get a single open position by ticket."""
+        self._ensure_started()
+        data = await self._http.get(f"/api/positions/{ticket}")
+        return data
 
     async def close_position(
         self,
@@ -319,7 +327,7 @@ class TonpoClient:
         if volume is not None and volume < 0:
             raise TonpoError(f"Volume must be positive if provided, got {volume}")
 
-        payload: dict = {"ticket": ticket}
+        payload: Dict[str, Any] = {"ticket": ticket}
         if volume is not None and volume > 0:
             payload["volume"] = volume
         data = await self._http.post("/api/orders/close", json=payload)
@@ -346,7 +354,7 @@ class TonpoClient:
         if tp is not None and tp <= 0:
             raise TonpoError(f"Take profit must be positive, got {tp}")
 
-        payload: dict = {"ticket": ticket}
+        payload: Dict[str, Any] = {"ticket": ticket}
         if sl is not None:
             payload["sl"] = sl
         if tp is not None:
