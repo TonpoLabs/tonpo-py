@@ -243,7 +243,7 @@ class TestAccountManagement:
     @pytest.mark.asyncio
     async def test_get_account_status(self, config):
         with respx.mock(base_url=config.base_url) as router:
-            router.get("/api/accounts/acc-1").mock(return_value=httpx.Response(200, json={
+            router.get("/api/accounts/acc-1/status").mock(return_value=httpx.Response(200, json={
                 "account_id": "acc-1", "status": "active"
             }))
             async with TonpoClient.for_user(config, "sk") as client:
@@ -253,7 +253,7 @@ class TestAccountManagement:
     @pytest.mark.asyncio
     async def test_delete_account(self, config):
         with respx.mock(base_url=config.base_url) as router:
-            router.delete("/api/accounts/acc-1/status").mock(
+            router.delete("/api/accounts/acc-1").mock(
                 return_value=httpx.Response(200, json={"message": "deleted"})
             )
             async with TonpoClient.for_user(config, "sk") as client:
@@ -299,12 +299,10 @@ class TestAccountInfoAndPositions:
     async def test_get_account_info(self, config):
         with respx.mock(base_url=config.base_url) as router:
             router.get("/api/account/info").mock(return_value=httpx.Response(200, json={
-                "account": {
-                    "login": 12345678, "name": "Test", "server": "ICMarkets-Demo",
-                    "balance": 10000.0, "equity": 10000.0, "margin": 0.0,
-                    "free_margin": 10000.0, "leverage": 100, "currency": "USD",
-                    "profit": 0.0,
-                }
+                "login": 12345678, "name": "Test", "server": "ICMarkets-Demo",
+                "balance": 10000.0, "equity": 10000.0, "margin": 0.0,
+                "free_margin": 10000.0, "leverage": 100, "currency": "USD",
+                "profit": 0.0,
             }))
             async with TonpoClient.for_user(config, "sk") as client:
                 info = await client.get_account_info()
