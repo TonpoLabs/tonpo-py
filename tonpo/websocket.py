@@ -35,30 +35,30 @@ class WebSocketClient:
     Not used directly — access via TonpoClient.ws or subscribe().
     """
 
-    def __init__(self, config: TonpoConfig, api_key: Optional[str] = None):
+    def __init__(self, config: TonpoConfig, api_key: Optional[str] = None) -> None:
         self._config = config
         self._api_key = api_key
         self._connection: Optional[websockets.WebSocketClientProtocol] = None
-        self._listener_task: Optional[asyncio.Task] = None
-        self._reconnect_task: Optional[asyncio.Task] = None
+        self._listener_task: Optional[asyncio.Task[None]] = None
+        self._reconnect_task: Optional[asyncio.Task[None]] = None
         self._reconnect_attempts = 0
         self._connected = False
 
         # Pending request futures — keyed by request_id
-        self._pending: Dict[str, asyncio.Future] = {}
+        self._pending: Dict[str, asyncio.Future[Any]] = {}
 
         # Price cache — updated by incoming ticks; read by get_symbol_price()
         self._price_cache: Dict[str, Dict[str, float]] = {}
 
         # Callbacks
-        self._tick_callbacks: Dict[str, List[Callable]] = {}
-        self._quote_callbacks: Dict[str, List[Callable]] = {}
-        self._candle_callbacks: Dict[str, List[Callable]] = {}
-        self._position_callbacks: List[Callable] = []
-        self._order_callbacks: List[Callable] = []
-        self._account_callbacks: List[Callable] = []
+        self._tick_callbacks: Dict[str, List[Callable[[Tick], Any]]] = {}
+        self._quote_callbacks: Dict[str, List[Callable[[Quote], Any]]] = {}
+        self._candle_callbacks: Dict[str, List[Callable[[Candle], Any]]] = {}
+        self._position_callbacks: List[Callable[[Position], Any]] = []
+        self._order_callbacks: List[Callable[[OrderResult], Any]] = []
+        self._account_callbacks: List[Callable[[AccountInfo], Any]] = []
 
-    def set_api_key(self, api_key: str):
+    def set_api_key(self, api_key: str) -> None:
         self._api_key = api_key
 
     @property
@@ -71,14 +71,14 @@ class WebSocketClient:
 
     # ==================== Connection ====================
 
-    async def connect(self):
+    async def connect(self) -> None:
         """Connect WebSocket. No-op if already connected."""
         if self._connection and not self._connection.closed:
             return
         self._reconnect_attempts = 0
         await self._connect_with_retry()
 
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         """Close WebSocket cleanly and cancel background tasks."""
         self._connected = False
 
@@ -96,7 +96,7 @@ class WebSocketClient:
             await self._connection.close()
             self._connection = None
 
-    async def _connect_with_retry(self):
+    async def _connect_with_retry(self) -> None:
         headers = {}
         if self._api_key:
             headers[self._config.api_key_header] = self._api_key
@@ -129,7 +129,7 @@ class WebSocketClient:
                         f"{self._config.max_reconnect_attempts} attempts"
                     ) from exc
 
-    async def _listen(self):
+    async def _listen(self) -> None:
         try:
             async for message in self._connection:
                 await self._dispatch(message)
@@ -147,9 +147,9 @@ class WebSocketClient:
             logger.error("WebSocket listener error: %s", exc)
             self._connected = False
 
-    # ==================== Message dispatch ====================
+    # Message dispatch
 
-    async def _dispatch(self, raw: str):
+    async def _dispatch(self, raw: str) -> None:
         try:
             data = json.loads(raw)
         except json.JSONDecodeError:
@@ -179,7 +179,7 @@ class WebSocketClient:
         else:
             logger.debug("Unknown WS message type: %s", msg_type)
 
-    async def _on_tick(self, data: dict):
+    async def _on_tick(self, data: dict) -> None:
         tick = Tick(
             symbol=data["symbol"],
             bid=float(data["bid"]),
@@ -197,7 +197,7 @@ class WebSocketClient:
         for cb in self._tick_callbacks.get(tick.symbol, []):
             await self._call(cb, tick)
 
-    async def _on_quote(self, data: dict):
+    async def _on_quote(self, data: dict) -> None:
         quote = Quote(
             symbol=data["symbol"],
             bid=float(data["bid"]),
@@ -207,7 +207,7 @@ class WebSocketClient:
         for cb in self._quote_callbacks.get(quote.symbol, []):
             await self._call(cb, quote)
 
-    async def _on_candle(self, data: dict):
+    async def _on_candle(self, data: dict) -> None:
         candle = Candle(
             symbol=data["symbol"],
             timeframe=data["timeframe"],
@@ -223,32 +223,32 @@ class WebSocketClient:
         for cb in self._candle_callbacks.get(key, []):
             await self._call(cb, candle)
 
-    async def _on_position(self, data: dict):
+    async def _on_position(self, data: dict) -> None:
         position = Position.from_dict(data)
         for cb in self._position_callbacks:
             await self._call(cb, position)
 
-    async def _on_order_result(self, data: dict):
+    async def _on_order_result(self, data: dict) -> None:
         result = OrderResult.from_dict(data)
         for cb in self._order_callbacks:
             await self._call(cb, result)
 
-    async def _on_account(self, data: dict):
+    async def _on_account(self, data: dict) -> None:
         account = AccountInfo.from_dict(data)
         for cb in self._account_callbacks:
             await self._call(cb, account)
 
-    async def _on_pong(self, data: dict):
+    async def _on_pong(self, data: dict) -> None:
         await self._on_response(data)
 
-    async def _on_response(self, data: dict):
+    async def _on_response(self, data: dict) -> None:
         request_id = data.get("request_id")
         if request_id and request_id in self._pending:
             future = self._pending.pop(request_id)
             if not future.done():
                 future.set_result(data)
 
-    async def _on_error(self, data: dict):
+    async def _on_error(self, data: dict) -> None:
         code = data.get("code")
         msg = data.get("message", "Tonpo error")
         logger.error("Tonpo WS error %s: %s", code, msg)
@@ -259,7 +259,7 @@ class WebSocketClient:
                 future.set_exception(TonpoConnectionError(msg))
 
     @staticmethod
-    async def _call(cb: Callable, arg: Any):
+    async def _call(cb: Callable[[Any], Any], arg: Any) -> None:
         try:
             if asyncio.iscoroutinefunction(cb):
                 await cb(arg)
@@ -331,31 +331,31 @@ class WebSocketClient:
 
     # ==================== Callback registration ====================
 
-    def on_tick(self, symbol: str, callback: Callable[[Tick], Any]):
+    def on_tick(self, symbol: str, callback: Callable[[Tick], Any]) -> None:
         """Register a callback for real-time tick updates on a symbol."""
         self._tick_callbacks.setdefault(symbol, []).append(callback)
 
-    def on_quote(self, symbol: str, callback: Callable[[Quote], Any]):
+    def on_quote(self, symbol: str, callback: Callable[[Quote], Any]) -> None:
         """Register a callback for bid/ask quote updates on a symbol."""
         self._quote_callbacks.setdefault(symbol, []).append(callback)
 
-    def on_candle(self, symbol: str, timeframe: str, callback: Callable[[Candle], Any]):
+    def on_candle(self, symbol: str, timeframe: str, callback: Callable[[Candle], Any]) -> None:
         """Register a callback for candle updates on a symbol+timeframe pair."""
         self._candle_callbacks.setdefault(f"{symbol}:{timeframe}", []).append(callback)
 
-    def on_position(self, callback: Callable[[Position], Any]):
+    def on_position(self, callback: Callable[[Position], Any]) -> None:
         """Register a callback for position updates."""
         self._position_callbacks.append(callback)
 
-    def on_order_result(self, callback: Callable[[OrderResult], Any]):
+    def on_order_result(self, callback: Callable[[OrderResult], Any]) -> None:
         """Register a callback for order execution results."""
         self._order_callbacks.append(callback)
 
-    def on_account(self, callback: Callable[[AccountInfo], Any]):
+    def on_account(self, callback: Callable[[AccountInfo], Any]) -> None:
         """Register a callback for account balance/equity updates."""
         self._account_callbacks.append(callback)
 
-    def clear_callbacks(self):
+    def clear_callbacks(self) -> None:
         """Remove all registered callbacks."""
         self._tick_callbacks.clear()
         self._quote_callbacks.clear()
