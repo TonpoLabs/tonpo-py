@@ -31,45 +31,42 @@ Quick start::
 """
 
 from .client import TonpoClient
-from .models import (
-    TonpoConfig,
-    UserCredentials,
-    AccountCredentials,
-    AccountInfo,
-    Position,
-    OrderResult,
-    SymbolPrice,
-    Quote,
-    Tick,
-    Candle,
-)
 from .exceptions import (
-    TonpoError,
-    NotStartedError,
-    AuthenticationError,
-    AccountNotFoundError,
     AccountLoginFailedError,
+    AccountNotFoundError,
     AccountTimeoutError,
+    AuthenticationError,
+    NotStartedError,
     OrderError,
-    TonpoConnectionError,   # NOT "ConnectionError" — that would shadow builtins.ConnectionError
     SubscriptionError,
+    TonpoConnectionError,
+    TonpoError,
     TonpoResponseError,
 )
+from .models import (
+    AccountCredentials,
+    AccountInfo,
+    Candle,
+    OrderResult,
+    Position,
+    Quote,
+    SymbolPrice,
+    Tick,
+    TonpoConfig,
+    UserCredentials,
+)
 
-__version__ = "1.0.0"
-__author__  = "TonpoLabs"
+__version__ = "1.0.6"
+__author__ = "TonpoLabs"
 
 __all__ = [
     # Main client
     "TonpoClient",
-
     # Configuration
     "TonpoConfig",
-
     # Credential models
     "UserCredentials",
     "AccountCredentials",
-
     # Data models
     "AccountInfo",
     "Position",
@@ -78,7 +75,6 @@ __all__ = [
     "Quote",
     "Tick",
     "Candle",
-
     # Exceptions
     "TonpoError",
     "NotStartedError",
