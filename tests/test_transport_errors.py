@@ -424,7 +424,7 @@ class TestConnectionErrors:
     async def test_ssl_certificate_error(self, config):
         """SSL certificate validation failed."""
         with respx.mock(base_url=config.base_url) as router:
-            router.get("/health").mock(side_effect=httpx.SSLError("certificate verify failed"))
+            router.get("/health").mock(side_effect=httpx.ConnectError("certificate verify failed"))
             t = HttpTransport(config)
             await t.start()
             with pytest.raises(TonpoConnectionError) as exc_info:
@@ -518,7 +518,7 @@ class TestEdgeCases:
         """Unusual: error response with no status (shouldn't happen, but defensive)."""
         with respx.mock(base_url=config.base_url) as router:
             # httpx Response always has status_code, but test raw exception handling
-            router.get("/api/account").mock(side_effect=RuntimeError("Unknown error"))
+            router.get("/api/account").mock(side_effect=httpx.ConnectError("Unknown error"))
             t = HttpTransport(config)
             await t.start()
             # RequestError subclasses should be caught

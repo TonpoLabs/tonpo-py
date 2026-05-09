@@ -339,7 +339,7 @@ class TestWaitForActiveEdgeCases:
         """Short timeout (1s) should timeout if account not active."""
         with respx.mock(base_url=config.base_url) as router:
             # Always return connecting (never active)
-            router.get("/api/accounts/acc-1").mock(
+            router.get("/api/accounts/acc-1/status").mock(
                 return_value=httpx.Response(200, json={"status": "connecting"})
             )
             
@@ -360,7 +360,7 @@ class TestWaitForActiveEdgeCases:
     async def test_wait_for_active_stops_immediately_when_active(self, config):
         """Should return immediately when account becomes active."""
         with respx.mock(base_url=config.base_url) as router:
-            router.get("/api/accounts/acc-1").mock(
+            router.get("/api/accounts/acc-1/status").mock(
                 return_value=httpx.Response(200, json={"status": "active"})
             )
             
@@ -386,7 +386,7 @@ class TestWaitForActiveEdgeCases:
                     return httpx.Response(200, json={"status": "connecting"})
                 return httpx.Response(200, json={"status": "active"})
             
-            router.get("/api/accounts/acc-1").mock(side_effect=side_effect)
+            router.get("/api/accounts/acc-1/status").mock(side_effect=side_effect)
             
             async with TonpoClient.for_user(config, "sk_test") as client:
                 # Zero poll interval will poll rapidly
@@ -407,7 +407,7 @@ class TestWaitForActiveEdgeCases:
                     return httpx.Response(200, json={"status": "connecting"})
                 return httpx.Response(200, json={"status": "active"})
             
-            router.get("/api/accounts/acc-1").mock(side_effect=side_effect)
+            router.get("/api/accounts/acc-1/status").mock(side_effect=side_effect)
             
             async with TonpoClient.for_user(config, "sk_test") as client:
                 # Use very long timeout (3600s = 1 hour)

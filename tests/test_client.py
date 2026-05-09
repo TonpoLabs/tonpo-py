@@ -175,7 +175,7 @@ class TestWaitForActive:
     @pytest.mark.asyncio
     async def test_returns_immediately_when_active(self, config):
         with respx.mock(base_url=config.base_url) as router:
-            router.get("/api/accounts/acc-1").mock(return_value=httpx.Response(200, json={
+            router.get("/api/accounts/acc-1/status").mock(return_value=httpx.Response(200, json={
                 "status": "active", "last_error": None
             }))
             async with TonpoClient.for_user(config, "sk") as client:
@@ -185,7 +185,7 @@ class TestWaitForActive:
     @pytest.mark.asyncio
     async def test_raises_login_failed(self, config):
         with respx.mock(base_url=config.base_url) as router:
-            router.get("/api/accounts/acc-1").mock(return_value=httpx.Response(200, json={
+            router.get("/api/accounts/acc-1/status").mock(return_value=httpx.Response(200, json={
                 "status": "login_failed",
                 "last_error": "Invalid credentials"
             }))
@@ -201,7 +201,7 @@ class TestWaitForActive:
         dict.get(key, default) returns None — must use 'or' fallback.
         """
         with respx.mock(base_url=config.base_url) as router:
-            router.get("/api/accounts/acc-1").mock(return_value=httpx.Response(200, json={
+            router.get("/api/accounts/acc-1/status").mock(return_value=httpx.Response(200, json={
                 "status": "login_failed",
                 "last_error": None          # key exists, value is None
             }))
@@ -215,7 +215,7 @@ class TestWaitForActive:
     @pytest.mark.asyncio
     async def test_raises_timeout(self, config):
         with respx.mock(base_url=config.base_url) as router:
-            router.get("/api/accounts/acc-1").mock(return_value=httpx.Response(200, json={
+            router.get("/api/accounts/acc-1/status").mock(return_value=httpx.Response(200, json={
                 "status": "connecting", "last_error": None
             }))
             async with TonpoClient.for_user(config, "sk") as client:
@@ -231,7 +231,7 @@ class TestWaitForActive:
             httpx.Response(200, json={"status": "active",     "last_error": None}),
         ])
         with respx.mock(base_url=config.base_url) as router:
-            router.get("/api/accounts/acc-1").mock(side_effect=lambda _: next(responses))
+            router.get("/api/accounts/acc-1/status").mock(side_effect=lambda _: next(responses))
             async with TonpoClient.for_user(config, "sk") as client:
                 await client.wait_for_active("acc-1", timeout=30, poll_interval=0)
 
@@ -253,7 +253,7 @@ class TestAccountManagement:
     @pytest.mark.asyncio
     async def test_delete_account(self, config):
         with respx.mock(base_url=config.base_url) as router:
-            router.delete("/api/accounts/acc-1").mock(
+            router.delete("/api/accounts/acc-1/status").mock(
                 return_value=httpx.Response(200, json={"message": "deleted"})
             )
             async with TonpoClient.for_user(config, "sk") as client:
@@ -298,7 +298,7 @@ class TestAccountInfoAndPositions:
     @pytest.mark.asyncio
     async def test_get_account_info(self, config):
         with respx.mock(base_url=config.base_url) as router:
-            router.get("/api/account").mock(return_value=httpx.Response(200, json={
+            router.get("/api/account/info").mock(return_value=httpx.Response(200, json={
                 "account": {
                     "login": 12345678, "name": "Test", "server": "ICMarkets-Demo",
                     "balance": 10000.0, "equity": 10000.0, "margin": 0.0,
