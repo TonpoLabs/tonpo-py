@@ -239,9 +239,7 @@ class TonpoClient:
             )
             await asyncio.sleep(poll_interval)
 
-        raise AccountTimeoutError(
-            f"Account {account_id} did not become active within {timeout}s"
-        )
+        raise AccountTimeoutError(f"Account {account_id} did not become active within {timeout}s")
 
     async def get_account_status(self, account_id: str) -> Dict[str, Any]:
         """
