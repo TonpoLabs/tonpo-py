@@ -57,19 +57,16 @@ from .models import (
 )
 
 __version__ = "1.0.0"
-__author__  = "TonpoLabs"
+__author__ = "TonpoLabs"
 
 __all__ = [
     # Main client
     "TonpoClient",
-
     # Configuration
     "TonpoConfig",
-
     # Credential models
     "UserCredentials",
     "AccountCredentials",
-
     # Data models
     "AccountInfo",
     "Position",
@@ -78,7 +75,6 @@ __all__ = [
     "Quote",
     "Tick",
     "Candle",
-
     # Exceptions
     "TonpoError",
     "NotStartedError",

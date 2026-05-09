@@ -4,6 +4,7 @@ Low-level HTTP transport.
 Handles all requests, auth headers, and HTTP-status → exception mapping.
 Not used directly — use TonpoClient instead.
 """
+
 import logging
 from typing import Any, Dict, Optional
 
@@ -53,9 +54,7 @@ class HttpTransport:
 
     def _ensure_started(self):
         if not self._client:
-            raise NotStartedError(
-                "Client not started — call start() or use 'async with'"
-            )
+            raise NotStartedError("Client not started — call start() or use 'async with'")
 
     async def get(self, path: str) -> Any:
         self._ensure_started()
@@ -68,9 +67,7 @@ class HttpTransport:
     async def post(self, path: str, json: Optional[Dict] = None) -> Any:
         self._ensure_started()
         try:
-            r = await self._client.post(
-                path, json=json or {}, headers=self._headers()
-            )
+            r = await self._client.post(path, json=json or {}, headers=self._headers())
             return self._handle(r)
         except httpx.RequestError as e:
             raise TonpoConnectionError(f"POST {path} failed: {e}") from e
@@ -82,13 +79,12 @@ class HttpTransport:
             return self._handle(r)
         except httpx.RequestError as e:
             raise TonpoConnectionError(f"DELETE {path} failed: {e}") from e
+
     async def patch(self, path: str, json: Optional[Dict] = None) -> Any:
         """Send a PATCH request."""
         self._ensure_started()
         try:
-            r = await self._client.patch(
-                path, json=json or {}, headers=self._headers()
-            )
+            r = await self._client.patch(path, json=json or {}, headers=self._headers())
             return self._handle(r)
         except httpx.RequestError as e:
             raise TonpoConnectionError(f"PATCH {path} failed: {e}") from e
@@ -117,9 +113,8 @@ class HttpTransport:
 
         if code == 404:
             from .exceptions import AccountNotFoundError
-            raise AccountNotFoundError(
-                f"Resource not found (404): {response.url.path}"
-            )
+
+            raise AccountNotFoundError(f"Resource not found (404): {response.url.path}")
 
         # Strip HTML error pages (nginx/proxy) before surfacing to user
         raw = response.text

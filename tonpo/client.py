@@ -16,6 +16,7 @@ Two usage patterns:
       pos     = await client.get_positions()
       result  = await client.place_market_buy("EURUSD", volume=0.1)
 """
+
 import asyncio
 import logging
 import time
@@ -23,7 +24,6 @@ from typing import List, Optional
 
 from .exceptions import (
     AccountLoginFailedError,
-    AccountNotFoundError,
     AccountTimeoutError,
     NotStartedError,
     TonpoError,
@@ -31,12 +31,9 @@ from .exceptions import (
 from .models import (
     AccountCredentials,
     AccountInfo,
-    Candle,
     OrderResult,
     Position,
-    Quote,
     SymbolPrice,
-    Tick,
     TonpoConfig,
     UserCredentials,
 )
@@ -68,7 +65,7 @@ class TonpoClient:
     def __init__(self, config: TonpoConfig, api_key: Optional[str] = None):
         self._config = config
         self._http = HttpTransport(config)
-        self._ws   = WebSocketClient(config, api_key=api_key)
+        self._ws = WebSocketClient(config, api_key=api_key)
         self._started = False
 
         if api_key:
@@ -77,7 +74,7 @@ class TonpoClient:
     # ==================== Factory methods ====================
 
     @classmethod
-    def admin(cls, config: TonpoConfig) -> 'TonpoClient':
+    def admin(cls, config: TonpoConfig) -> "TonpoClient":
         """
         Create an unauthenticated admin client.
         Use only for: ``health_check()`` and ``create_user()``.
@@ -85,7 +82,7 @@ class TonpoClient:
         return cls(config, api_key=None)
 
     @classmethod
-    def for_user(cls, config: TonpoConfig, api_key: str) -> 'TonpoClient':
+    def for_user(cls, config: TonpoConfig, api_key: str) -> "TonpoClient":
         """
         Create an authenticated client for a specific user.
         All trading and account operations require this.
@@ -106,7 +103,7 @@ class TonpoClient:
         await self._http.stop()
         self._started = False
         logger.debug("TonpoClient stopped")
-        
+
     def _ensure_started(self) -> None:
         """Raise NotStartedError if client hasn't been started."""
         if not self._started:
@@ -122,8 +119,8 @@ class TonpoClient:
 
     async def __aexit__(self, *_):
         await self.stop()
-        
-    #Health
+
+    # Health
     async def health_check(self) -> bool:
         """Return True if the gateway is reachable and healthy."""
         self._ensure_started()
@@ -142,13 +139,11 @@ class TonpoClient:
         ``api_key``. Store both — they are needed for all future requests.
         """
         data = await self._http.post("/api/users")
-        api_key = data.get('api_key') or data.get('apiKey') or data.get('token', '')
-        user_id = data.get('user_id') or data.get('userId', '')
+        api_key = data.get("api_key") or data.get("apiKey") or data.get("token", "")
+        user_id = data.get("user_id") or data.get("userId", "")
 
         if not api_key or not user_id:
-            raise TonpoError(
-                f"create_user() returned incomplete data: {data}"
-            )
+            raise TonpoError(f"create_user() returned incomplete data: {data}")
 
         logger.info("Created gateway user: %s", user_id)
         return UserCredentials(gateway_user_id=user_id, api_key=api_key)
@@ -180,25 +175,23 @@ class TonpoClient:
         """
         # Gateway CreateAccountRequest uses camelCase (Rust #[serde(rename_all = "camelCase")])
         payload: dict = {
-            "mt5Login":    mt5_login,
+            "mt5Login": mt5_login,
             "mt5Password": mt5_password,
-            "mt5Server":   mt5_server,
+            "mt5Server": mt5_server,
         }
         if region:
             payload["region"] = region
 
         data = await self._http.post("/api/accounts", json=payload)
-        account_id = data.get('account_id')
+        account_id = data.get("account_id")
 
         if not account_id:
-            raise TonpoError(
-                f"create_account() returned no account_id: {data}"
-            )
+            raise TonpoError(f"create_account() returned no account_id: {data}")
 
         logger.info("Account provisioned: %s", account_id)
         return AccountCredentials(
             account_id=account_id,
-            auth_token=data.get('auth_token'),
+            auth_token=data.get("auth_token"),
         )
 
     async def wait_for_active(
@@ -226,19 +219,16 @@ class TonpoClient:
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             status = await self.get_account_status(account_id)
-            state  = status.get('status', '')
+            state = status.get("status", "")
 
-            if state == 'active':
+            if state == "active":
                 logger.info("Account %s is active", account_id)
                 return
 
-            if state in ('login_failed', 'deleted'):
+            if state in ("login_failed", "deleted"):
                 # dict.get(key, default) returns None when the key EXISTS with
                 # value None — use 'or' to get the fallback in that case too.
-                error = (
-                    status.get('last_error')
-                    or f"MT5 login failed (account status: {state})"
-                )
+                error = status.get("last_error") or f"MT5 login failed (account status: {state})"
                 raise AccountLoginFailedError(error)
 
             logger.debug(
@@ -267,7 +257,7 @@ class TonpoClient:
     async def get_accounts(self) -> List[dict]:
         """List all accounts belonging to the authenticated user."""
         data = await self._http.get("/api/accounts")
-        return data.get('accounts', [])
+        return data.get("accounts", [])
 
     async def delete_account(self, account_id: str) -> bool:
         """
@@ -293,24 +283,24 @@ class TonpoClient:
     async def get_account_info(self) -> AccountInfo:
         """Get MT5 account balance, equity, margin, and other live info."""
         data = await self._http.get("/api/account")
-        return AccountInfo.from_dict(data.get('account', data))
-         
+        return AccountInfo.from_dict(data.get("account", data))
+
     async def list_symbols(self) -> List[str]:
         """
         List all symbols available on the connected MT5 account.
-               
+
         Returns:
             List of symbol strings (e.g. ``["EURUSD", "GBPUSD", "XAUUSD"]``).
         """
         data = await self._http.get("/api/symbols")
-        return data.get('symbols', [])
+        return data.get("symbols", [])
 
     # ==================== Positions ====================
 
     async def get_positions(self) -> List[Position]:
         """Get all currently open positions."""
         data = await self._http.get("/api/positions")
-        return [Position.from_dict(p) for p in data.get('positions', [])]
+        return [Position.from_dict(p) for p in data.get("positions", [])]
 
     async def close_position(
         self,
@@ -328,7 +318,7 @@ class TonpoClient:
         # VALIDATION
         if volume is not None and volume < 0:
             raise TonpoError(f"Volume must be positive if provided, got {volume}")
-            
+
         payload: dict = {"ticket": ticket}
         if volume is not None and volume > 0:
             payload["volume"] = volume
@@ -342,12 +332,12 @@ class TonpoClient:
         tp: Optional[float] = None,
     ) -> OrderResult:
         """
-        Modify stop-loss and/or take-profit on an open position.       
+        Modify stop-loss and/or take-profit on an open position.
         Args:
             ticket: MT5 position ticket.
             sl: New stop loss price (must be positive).
             tp: New take profit price (must be positive).
-            
+
         Raises:
             TonpoError: If sl or tp are provided and <= 0
         """
@@ -355,7 +345,7 @@ class TonpoClient:
             raise TonpoError(f"Stop loss must be positive, got {sl}")
         if tp is not None and tp <= 0:
             raise TonpoError(f"Take profit must be positive, got {tp}")
-            
+
         payload: dict = {"ticket": ticket}
         if sl is not None:
             payload["sl"] = sl
@@ -376,8 +366,9 @@ class TonpoClient:
         magic: Optional[int] = None,
     ) -> OrderResult:
         """Place a market buy order."""
-        return await self._place_order(symbol, 'buy', 'market', volume,
-                                       sl=sl, tp=tp, comment=comment, magic=magic)
+        return await self._place_order(
+            symbol, "buy", "market", volume, sl=sl, tp=tp, comment=comment, magic=magic
+        )
 
     async def place_market_sell(
         self,
@@ -389,8 +380,9 @@ class TonpoClient:
         magic: Optional[int] = None,
     ) -> OrderResult:
         """Place a market sell order."""
-        return await self._place_order(symbol, 'sell', 'market', volume,
-                                       sl=sl, tp=tp, comment=comment, magic=magic)
+        return await self._place_order(
+            symbol, "sell", "market", volume, sl=sl, tp=tp, comment=comment, magic=magic
+        )
 
     async def place_limit_buy(
         self,
@@ -403,8 +395,9 @@ class TonpoClient:
         magic: Optional[int] = None,
     ) -> OrderResult:
         """Place a limit buy order."""
-        return await self._place_order(symbol, 'buy', 'limit', volume, price=price,
-                                       sl=sl, tp=tp, comment=comment, magic=magic)
+        return await self._place_order(
+            symbol, "buy", "limit", volume, price=price, sl=sl, tp=tp, comment=comment, magic=magic
+        )
 
     async def place_limit_sell(
         self,
@@ -417,8 +410,9 @@ class TonpoClient:
         magic: Optional[int] = None,
     ) -> OrderResult:
         """Place a limit sell order."""
-        return await self._place_order(symbol, 'sell', 'limit', volume, price=price,
-                                       sl=sl, tp=tp, comment=comment, magic=magic)
+        return await self._place_order(
+            symbol, "sell", "limit", volume, price=price, sl=sl, tp=tp, comment=comment, magic=magic
+        )
 
     async def place_stop_buy(
         self,
@@ -431,8 +425,9 @@ class TonpoClient:
         magic: Optional[int] = None,
     ) -> OrderResult:
         """Place a stop buy order."""
-        return await self._place_order(symbol, 'buy', 'stop', volume, price=price,
-                                       sl=sl, tp=tp, comment=comment, magic=magic)
+        return await self._place_order(
+            symbol, "buy", "stop", volume, price=price, sl=sl, tp=tp, comment=comment, magic=magic
+        )
 
     async def place_stop_sell(
         self,
@@ -445,8 +440,9 @@ class TonpoClient:
         magic: Optional[int] = None,
     ) -> OrderResult:
         """Place a stop sell order."""
-        return await self._place_order(symbol, 'sell', 'stop', volume, price=price,
-                                       sl=sl, tp=tp, comment=comment, magic=magic)
+        return await self._place_order(
+            symbol, "sell", "stop", volume, price=price, sl=sl, tp=tp, comment=comment, magic=magic
+        )
 
     async def _place_order(
         self,
@@ -460,32 +456,32 @@ class TonpoClient:
         comment: Optional[str] = None,
         magic: Optional[int] = None,
     ) -> OrderResult:
-        # VOLUME VALIDATION 
+        # VOLUME VALIDATION
         if volume <= 0:
             raise TonpoError(f"Volume must be positive, got {volume}")
-        
+
         #  SYMBOL VALIDATION
         if not symbol or not symbol.strip():
             raise TonpoError("Symbol cannot be empty or whitespace")
-        
-        # PRICE VALIDATION            
-        if order_type in ('limit', 'stop'):
+
+        # PRICE VALIDATION
+        if order_type in ("limit", "stop"):
             if price is None:
                 raise TonpoError(f"{order_type.capitalize()} orders require a price")
             if price <= 0:
                 raise TonpoError(f"Price must be positive for {order_type} orders, got {price}")
-        
-        #  SL/TP VALIDATION 
+
+        #  SL/TP VALIDATION
         if sl is not None and sl <= 0:
             raise TonpoError(f"Stop loss must be positive, got {sl}")
         if tp is not None and tp <= 0:
             raise TonpoError(f"Take profit must be positive, got {tp}")
-            
+
         payload: dict = {
-            "symbol":    symbol,
-            "side":      side,
+            "symbol": symbol,
+            "side": side,
             "orderType": order_type,
-            "volume":    volume,
+            "volume": volume,
         }
         if price is not None:
             payload["price"] = price
@@ -512,7 +508,7 @@ class TonpoClient:
             TonpoError: No price available (not subscribed, bad symbol).
         """
         try:
-            data  = await self._http.get(f"/api/symbols/{symbol}")
+            data = await self._http.get(f"/api/symbols/{symbol}")
             price = SymbolPrice.from_dict(symbol, data)
             if price.bid != 0 or price.ask != 0:
                 return price
@@ -522,7 +518,7 @@ class TonpoClient:
         # Fallback — WebSocket price cache populated by subscribe()
         cached = self._ws.get_cached_price(symbol)
         if cached:
-            return SymbolPrice(symbol=symbol, bid=cached['bid'], ask=cached['ask'])
+            return SymbolPrice(symbol=symbol, bid=cached["bid"], ask=cached["ask"])
 
         raise TonpoError(
             f"No price available for '{symbol}' — "
