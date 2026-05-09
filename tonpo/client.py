@@ -20,7 +20,7 @@ Two usage patterns:
 import asyncio
 import logging
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, cast, Dict, List, Optional
 
 from .exceptions import (
     AccountLoginFailedError,
@@ -91,7 +91,7 @@ class TonpoClient:
 
     # ==================== Lifecycle ====================
 
-    async def start(self):
+    async def start(self) -> None:
         """Start the HTTP transport. Must be called before any API method."""
         await self._http.start()
         self._started = True
@@ -250,12 +250,13 @@ class TonpoClient:
           - ``last_error`` — error string or ``None``
         """
         self._ensure_started()
-        return await self._http.get(f"/api/accounts/{account_id}/status")
+        data = await self._http.get(f"/api/accounts/{account_id}/status")
+        return cast(Dict[str, Any], data)
 
-    async def get_accounts(self) -> List[dict]:
+    async def get_accounts(self) -> List[Dict[str, Any]]:
         """List all accounts belonging to the authenticated user."""
         data = await self._http.get("/api/accounts")
-        return data.get("accounts", [])
+        return cast(List[Dict[str, Any]], data.get("accounts", []))
 
     async def delete_account(self, account_id: str) -> bool:
         """
@@ -292,7 +293,7 @@ class TonpoClient:
             List of symbol strings (e.g. ``["EURUSD", "GBPUSD", "XAUUSD"]``).
         """
         data = await self._http.get("/api/symbols")
-        return data.get("symbols", [])
+        return cast(List[str], data.get("symbols", []))
 
     # ==================== Positions ====================
 
@@ -517,7 +518,7 @@ class TonpoClient:
         if tp is not None and tp <= 0:
             raise TonpoError(f"Take profit must be positive, got {tp}")
 
-        payload: dict = {
+        payload: Dict[str, Any] = {
             "symbol": symbol,
             "side": side,
             "orderType": order_type,

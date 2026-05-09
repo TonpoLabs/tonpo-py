@@ -58,6 +58,7 @@ class HttpTransport:
 
     async def get(self, path: str) -> Any:
         self._ensure_started()
+        assert self._client is not None
         try:
             r = await self._client.get(path, headers=self._headers())
             return self._handle(r)
@@ -66,6 +67,7 @@ class HttpTransport:
 
     async def post(self, path: str, json: Optional[Dict[str, Any]] = None) -> Any:
         self._ensure_started()
+        assert self._client is not None
         try:
             r = await self._client.post(path, json=json or {}, headers=self._headers())
             return self._handle(r)
@@ -74,6 +76,7 @@ class HttpTransport:
 
     async def delete(self, path: str) -> Any:
         self._ensure_started()
+        assert self._client is not None
         try:
             r = await self._client.delete(path, headers=self._headers())
             return self._handle(r)
@@ -83,6 +86,7 @@ class HttpTransport:
     async def patch(self, path: str, json: Optional[Dict[str, Any]] = None) -> Any:
         """Send a PATCH request."""
         self._ensure_started()
+        assert self._client is not None
         try:
             r = await self._client.patch(path, json=json or {}, headers=self._headers())
             return self._handle(r)

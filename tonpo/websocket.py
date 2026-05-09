@@ -11,7 +11,7 @@ import uuid
 from typing import Any, Callable, Dict, List, Optional
 
 import websockets
-from websockets.client import ClientConnection
+from websockets.asyncio.client import ClientConnection
 from websockets.exceptions import ConnectionClosed
 
 from .exceptions import SubscriptionError, TonpoConnectionError
