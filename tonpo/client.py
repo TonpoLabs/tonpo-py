@@ -298,17 +298,19 @@ class TonpoClient:
 
     # ==================== Positions ====================
 
-    async def get_positions(self) -> List[Dict[str, Any]]:
+    async def get_positions(self) -> List[Position]:
         """Get all open positions."""
         self._ensure_started()
         data = await self._http.get("/api/positions")
-        return data
+        # Handle both list and dict responses from gateway
+        positions = data.get("positions", []) if isinstance(data, dict) else data
+        return [Position.from_dict(p) for p in positions]
 
-    async def get_position(self, ticket: int) -> Dict[str, Any]:
+    async def get_position(self, ticket: int) -> Position:
         """Get a single open position by ticket."""
         self._ensure_started()
         data = await self._http.get(f"/api/positions/{ticket}")
-        return data
+        return Position.from_dict(data)
 
     async def close_position(
         self,
