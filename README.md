@@ -78,7 +78,7 @@ async def main():
     # Step 2 — Connect an MT5 account (once per MT5 account)
     async with TonpoClient.for_user(config, user.api_key) as client:
         account = await client.create_account(
-            mt5_login="105745233",
+            mt5_login="123456789",
             mt5_password="YourMT5Password",
             mt5_server="FBS-Demo",
         )
@@ -107,13 +107,13 @@ Tonpo separates setup from trading. You go through setup once per user and once 
 
 ```
 Setup (run once)
-──────────────────────────────────────────────────────────
+
 create_user()       →  api_key + gateway_user_id   (save to DB)
 create_account()    →  account_id                   (save to DB)
 wait_for_active()   →  MT5 is logged in, ready to trade
 
 Every request after that
-──────────────────────────────────────────────────────────
+
 for_user(api_key)   →  identifies and authenticates the user
 account_id          →  tells Tonpo which MT5 account to act on
 
@@ -428,7 +428,7 @@ from tonpo import TonpoClient, TonpoConfig, AccountLoginFailedError, AccountTime
 
 config = TonpoConfig(host="gateway.tonpo.io", port=443, use_ssl=True)
 
-# ── Registration ──────────────────────────────────────────────────────────────
+#  Registration
 # Called once when a user submits their MT5 credentials.
 
 async def register_user(telegram_id, mt5_login, mt5_password, mt5_server):
@@ -451,121 +451,20 @@ async def register_user(telegram_id, mt5_login, mt5_password, mt5_server):
         tonpo_account_id = account.account_id,
     )
 
-# ── Place a trade ─────────────────────────────────────────────────────────────
-
+# Place a trade 
 async def place_buy(telegram_id, symbol, volume):
     row = db.get(telegram_id=telegram_id)
     async with TonpoClient.for_user(config, row.tonpo_api_key) as c:
         result = await c.place_market_buy(symbol, volume=volume)
         return result.ticket
 
-# ── Check balance ─────────────────────────────────────────────────────────────
-
+# Check balance
 async def get_balance(telegram_id):
     row = db.get(telegram_id=telegram_id)
     async with TonpoClient.for_user(config, row.tonpo_api_key) as c:
         info = await c.get_account_info()
         return info.balance, info.currency
 ```
-
----
-
-## Project Structure
-
-```
-tonpo-py/
-├── pyproject.toml              # packaging metadata
-├── setup.py                    # legacy build shim
-├── MANIFEST.in                 # source distribution file list
-├── LICENSE
-├── README.md
-├── CHANGELOG.md
-├── .gitignore
-├── .github/
-│   └── workflows/
-│       └── publish.yml         # auto-publishes to PyPI on git tag
-└── tonpo/
-    ├── __init__.py             # public API + __version__
-    ├── client.py               # TonpoClient — main entry point
-    ├── models.py               # all dataclasses
-    ├── exceptions.py           # exception hierarchy
-    ├── transport.py            # HTTP layer (httpx)
-    ├── websocket.py            # WebSocket layer (auto-reconnection)
-    └── py.typed                # PEP 561 marker — enables IDE type hints
-```
-
----
-
-## Publishing a Release
-
-```bash
-# 1. Bump version in pyproject.toml and tonpo/__init__.py
-# 2. Add entry to CHANGELOG.md
-# 3. Commit, tag, and push
-
-git add .
-git commit -m "Release v1.0.6"
-git tag v1.0.6
-git push origin main
-git push origin v1.0.6
-# GitHub Actions builds and publishes to PyPI automatically
-```
-
----
-
-## Development
-
-```bash
-git clone https://github.com/TonpoLabs/tonpo-py.git
-cd tonpo-py
-pip install -e ".[dev]"
-
-pytest
-pytest tests/test_client.py -v
-```
-
-**Dev dependencies:**
-
-| Package | Purpose |
-|---|---|
-| `httpx>=0.24` | Async HTTP client |
-| `websockets>=11.0` | Async WebSocket client |
-| `pytest` | Test runner |
-| `pytest-asyncio` | Async test support |
-| `respx` | httpx request mocking |
-
----
-
-## Changelog
-
-### v1.0.6 — 2026-05-04
-
-- WebSocket resilience improvements — proper `CancelledError` handling on disconnect
-- Fixed `ConnectionClosed` logging — removed invalid `.rcvd_then` attribute access
-- Comprehensive test suite — 97 tests across transport, validation, and WebSocket layers
-
-### v1.0.5 — 2026-04-19
-
-- License updated to Proprietary
-- `wait_for_active` default timeout raised to 180s
-
-### v1.0.0 — 2026-04-10
-
-- Initial release
-- `TonpoClient` with `admin()` and `for_user()` factory methods
-- Full account lifecycle: `create_account`, `wait_for_active`, `get_account_status`, `get_accounts`, `delete_account`, `pause_account`, `resume_account`
-- All order types: market, limit, stop (buy and sell)
-- Position management: `get_positions`, `close_position`, `modify_position`
-- Account info: `get_account_info`
-- Market data: `get_symbol_price` (REST + WebSocket cache fallback)
-- WebSocket real-time data with auto-reconnection: ticks, quotes, candles, positions, order results, account updates
-- Typed dataclass models for all gateway responses
-- `py.typed` PEP 561 marker for full IDE type hint support
-- GitHub Actions workflow for automated PyPI publishing on git tag
-- `TonpoConnectionError` named to avoid shadowing `builtins.ConnectionError`
-
----
-
 ## License
 
 Proprietary — All rights reserved. © Tonpo. Unauthorised copying, distribution, or use is strictly prohibited.
